@@ -1,13 +1,13 @@
 d3.scale.linear = function() {
-  var domain = [0, 1],
-      range = [0, 1],
-      interpolate = d3.interpolate,
-      clamp = false,
-      output,
+  return d3_scale_linear([0, 1], [0, 1], d3.interpolate, false);
+};
+
+function d3_scale_linear(domain, range, interpolate, clamp) {
+  var output,
       input;
 
   function rescale() {
-    var linear = domain.length == 2 ? d3_scale_bilinear : d3_scale_polylinear,
+    var linear = Math.min(domain.length, range.length) > 2 ? d3_scale_polylinear : d3_scale_bilinear,
         uninterpolate = clamp ? d3_uninterpolateClamp : d3_uninterpolateNumber;
     output = linear(domain, range, uninterpolate, interpolate);
     input = linear(range, domain, uninterpolate, d3.interpolate);
@@ -64,26 +64,25 @@ d3.scale.linear = function() {
     return rescale();
   };
 
+  scale.copy = function() {
+    return d3_scale_linear(domain, range, interpolate, clamp);
+  };
+
   return rescale();
-};
+}
 
 function d3_scale_linearRebind(scale, linear) {
-  scale.range = d3.rebind(scale, linear.range);
-  scale.rangeRound = d3.rebind(scale, linear.rangeRound);
-  scale.interpolate = d3.rebind(scale, linear.interpolate);
-  scale.clamp = d3.rebind(scale, linear.clamp);
-  return scale;
+  return d3.rebind(scale, linear, "range", "rangeRound", "interpolate", "clamp");
 }
 
 function d3_scale_linearNice(dx) {
   dx = Math.pow(10, Math.round(Math.log(dx) / Math.LN10) - 1);
-  return {
+  return dx && {
     floor: function(x) { return Math.floor(x / dx) * dx; },
     ceil: function(x) { return Math.ceil(x / dx) * dx; }
   };
 }
 
-// TODO Dates? Ugh.
 function d3_scale_linearTickRange(domain, m) {
   var extent = d3_scaleExtent(domain),
       span = extent[1] - extent[0],

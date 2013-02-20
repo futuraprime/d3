@@ -1,6 +1,6 @@
 d3.svg.chord = function() {
-  var source = d3_svg_chordSource,
-      target = d3_svg_chordTarget,
+  var source = d3_source,
+      target = d3_target,
       radius = d3_svg_chordRadius,
       startAngle = d3_svg_arcStartAngle,
       endAngle = d3_svg_arcEndAngle;
@@ -11,10 +11,10 @@ d3.svg.chord = function() {
     var s = subgroup(this, source, d, i),
         t = subgroup(this, target, d, i);
     return "M" + s.p0
-      + arc(s.r, s.p1) + (equals(s, t)
+      + arc(s.r, s.p1, s.a1 - s.a0) + (equals(s, t)
       ? curve(s.r, s.p1, s.r, s.p0)
       : curve(s.r, s.p1, t.r, t.p0)
-      + arc(t.r, t.p1)
+      + arc(t.r, t.p1, t.a1 - t.a0)
       + curve(t.r, t.p1, s.r, s.p0))
       + "Z";
   }
@@ -37,8 +37,8 @@ d3.svg.chord = function() {
     return a.a0 == b.a0 && a.a1 == b.a1;
   }
 
-  function arc(r, p) {
-    return "A" + r + "," + r + " 0 0,1 " + p;
+  function arc(r, p, a) {
+    return "A" + r + "," + r + " 0 " + +(a > π) + ",1 " + p;
   }
 
   function curve(r0, p0, r1, p1) {
@@ -47,53 +47,37 @@ d3.svg.chord = function() {
 
   chord.radius = function(v) {
     if (!arguments.length) return radius;
-    radius = d3.functor(v);
+    radius = d3_functor(v);
     return chord;
   };
 
   chord.source = function(v) {
     if (!arguments.length) return source;
-    source = d3.functor(v);
+    source = d3_functor(v);
     return chord;
   };
 
   chord.target = function(v) {
     if (!arguments.length) return target;
-    target = d3.functor(v);
+    target = d3_functor(v);
     return chord;
   };
 
   chord.startAngle = function(v) {
     if (!arguments.length) return startAngle;
-    startAngle = d3.functor(v);
+    startAngle = d3_functor(v);
     return chord;
   };
 
   chord.endAngle = function(v) {
     if (!arguments.length) return endAngle;
-    endAngle = d3.functor(v);
+    endAngle = d3_functor(v);
     return chord;
   };
 
   return chord;
 };
 
-function d3_svg_chordSource(d) {
-  return d.source;
-}
-
-function d3_svg_chordTarget(d) {
-  return d.target;
-}
-
 function d3_svg_chordRadius(d) {
   return d.radius;
-}
-
-function d3_svg_chordStartAngle(d) {
-  return d.startAngle;
-}
-
-function d3_svg_chordEndAngle(d) {
-  return d.endAngle;
 }

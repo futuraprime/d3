@@ -1,36 +1,28 @@
-var d3_timer_queue = null,
+var d3_timer_id = 0,
+    d3_timer_byId = {},
+    d3_timer_queue = null,
     d3_timer_interval, // is an interval (or frame) active?
     d3_timer_timeout; // is a timeout active?
 
 // The timer will continue to fire until callback returns true.
-d3.timer = function(callback) {
-  d3_timer(callback, 0);
-};
+d3.timer = function(callback, delay, then) {
+  if (arguments.length < 3) {
+    if (arguments.length < 2) delay = 0;
+    else if (!isFinite(delay)) return;
+    then = Date.now();
+  }
 
-function d3_timer(callback, delay) {
-  var now = Date.now(),
-      found = false,
-      t0,
-      t1 = d3_timer_queue;
-
-  if (!isFinite(delay)) return;
-
-  // See if the callback's already in the queue.
-  while (t1) {
-    if (t1.callback === callback) {
-      t1.then = now;
-      t1.delay = delay;
-      found = true;
-      break;
-    }
-    t0 = t1;
-    t1 = t1.next;
+  // If the callback's already in the queue, update it.
+  var timer = d3_timer_byId[callback.id];
+  if (timer && timer.callback === callback) {
+    timer.then = then;
+    timer.delay = delay;
   }
 
   // Otherwise, add the callback to the queue.
-  if (!found) d3_timer_queue = {
+  else d3_timer_byId[callback.id = ++d3_timer_id] = d3_timer_queue = {
     callback: callback,
-    then: now,
+    then: then,
     delay: delay,
     next: d3_timer_queue
   };
@@ -41,7 +33,7 @@ function d3_timer(callback, delay) {
     d3_timer_interval = 1;
     d3_timer_frame(d3_timer_step);
   }
-}
+};
 
 function d3_timer_step() {
   var elapsed,
@@ -50,7 +42,7 @@ function d3_timer_step() {
 
   while (t1) {
     elapsed = now - t1.then;
-    if (elapsed > t1.delay) t1.flush = t1.callback(elapsed);
+    if (elapsed >= t1.delay) t1.flush = t1.callback(elapsed);
     t1 = t1.next;
   }
 
@@ -81,13 +73,14 @@ d3.timer.flush = function() {
   d3_timer_flush();
 };
 
-// Flush after callbacks, to avoid concurrent queue modification.
+// Flush after callbacks to avoid concurrent queue modification.
 function d3_timer_flush() {
   var t0 = null,
       t1 = d3_timer_queue,
       then = Infinity;
   while (t1) {
     if (t1.flush) {
+      delete d3_timer_byId[t1.callback.id];
       t1 = t0 ? t0.next = t1.next : d3_timer_queue = t1.next;
     } else {
       then = Math.min(then, t1.then + t1.delay);
@@ -97,9 +90,9 @@ function d3_timer_flush() {
   return then;
 }
 
-var d3_timer_frame = window.requestAnimationFrame
-    || window.webkitRequestAnimationFrame
-    || window.mozRequestAnimationFrame
-    || window.oRequestAnimationFrame
-    || window.msRequestAnimationFrame
+var d3_timer_frame = d3_window.requestAnimationFrame
+    || d3_window.webkitRequestAnimationFrame
+    || d3_window.mozRequestAnimationFrame
+    || d3_window.oRequestAnimationFrame
+    || d3_window.msRequestAnimationFrame
     || function(callback) { setTimeout(callback, 17); };

@@ -4,18 +4,18 @@ d3.layout.hierarchy = function() {
       value = d3_layout_hierarchyValue;
 
   // Recursively compute the node depth and value.
-  // Also converts the data representation into a standard hierarchy structure.
-  function recurse(data, depth, nodes) {
-    var childs = children.call(hierarchy, data, depth),
-        node = d3_layout_hierarchyInline ? data : {data: data};
+  // Also converts to a standard hierarchy structure.
+  function recurse(node, depth, nodes) {
+    var childs = children.call(hierarchy, node, depth);
     node.depth = depth;
     nodes.push(node);
-    if (childs) {
+    if (childs && (n = childs.length)) {
       var i = -1,
-          n = childs.length,
+          n,
           c = node.children = [],
           v = 0,
-          j = depth + 1;
+          j = depth + 1,
+          d;
       while (++i < n) {
         d = recurse(childs[i], j, nodes);
         d.parent = node;
@@ -25,7 +25,7 @@ d3.layout.hierarchy = function() {
       if (sort) c.sort(sort);
       if (value) node.value = v;
     } else if (value) {
-      node.value = value.call(hierarchy, data, depth);
+      node.value = +value.call(hierarchy, node, depth) || 0;
     }
     return node;
   }
@@ -34,13 +34,13 @@ d3.layout.hierarchy = function() {
   function revalue(node, depth) {
     var children = node.children,
         v = 0;
-    if (children) {
+    if (children && (n = children.length)) {
       var i = -1,
-          n = children.length,
+          n,
           j = depth + 1;
       while (++i < n) v += revalue(children[i], j);
     } else if (value) {
-      v = value.call(hierarchy, d3_layout_hierarchyInline ? node : node.data, depth);
+      v = +value.call(hierarchy, node, depth) || 0;
     }
     if (value) node.value = v;
     return v;
@@ -81,16 +81,11 @@ d3.layout.hierarchy = function() {
 
 // A method assignment helper for hierarchy subclasses.
 function d3_layout_hierarchyRebind(object, hierarchy) {
-  object.sort = d3.rebind(object, hierarchy.sort);
-  object.children = d3.rebind(object, hierarchy.children);
-  object.links = d3_layout_hierarchyLinks;
-  object.value = d3.rebind(object, hierarchy.value);
+  d3.rebind(object, hierarchy, "sort", "children", "value");
 
-  // If the new API is used, enabling inlining.
-  object.nodes = function(d) {
-    d3_layout_hierarchyInline = true;
-    return (object.nodes = object)(d);
-  };
+  // Add an alias for nodes and links, for convenience.
+  object.nodes = object;
+  object.links = d3_layout_hierarchyLinks;
 
   return object;
 }
@@ -115,6 +110,3 @@ function d3_layout_hierarchyLinks(nodes) {
     });
   }));
 }
-
-// For backwards-compatibility, don't enable inlining by default.
-var d3_layout_hierarchyInline = false;

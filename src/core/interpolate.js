@@ -17,7 +17,7 @@ d3.interpolateRound = function(a, b) {
 d3.interpolateString = function(a, b) {
   var m, // current match
       i, // current index
-      j, // current index (for coallescing)
+      j, // current index (for coalescing)
       s0 = 0, // start index of current string prefix
       s1 = 0, // end index of current string prefix
       s = [], // string constants and placeholders
@@ -40,13 +40,13 @@ d3.interpolateString = function(a, b) {
   // Find all numbers in a.
   for (i = 0, n = q.length; (m = d3_interpolate_number.exec(a)) && i < n; ++i) {
     o = q[i];
-    if (o.x == m[0]) { // The numbers match, so coallesce.
+    if (o.x == m[0]) { // The numbers match, so coalesce.
       if (o.i) {
         if (s[o.i + 1] == null) { // This match is followed by another number.
           s[o.i - 1] += o.x;
           s.splice(o.i, 1);
           for (j = i + 1; j < n; ++j) q[j].i--;
-        } else { // This match is followed by a string, so coallesce twice.
+        } else { // This match is followed by a string, so coalesce twice.
           s[o.i - 1] += o.x + s[o.i + 1];
           s.splice(o.i, 2);
           for (j = i + 1; j < n; ++j) q[j].i -= 2;
@@ -54,7 +54,7 @@ d3.interpolateString = function(a, b) {
       } else {
           if (s[o.i + 1] == null) { // This match is followed by another number.
           s[o.i] = o.x;
-        } else { // This match is followed by a string, so coallesce twice.
+        } else { // This match is followed by a string, so coalesce twice.
           s[o.i] = o.x + s[o.i + 1];
           s.splice(o.i + 1, 1);
           for (j = i + 1; j < n; ++j) q[j].i--;
@@ -73,7 +73,7 @@ d3.interpolateString = function(a, b) {
     o = q.pop();
     if (s[o.i + 1] == null) { // This match is followed by another number.
       s[o.i] = o.x;
-    } else { // This match is followed by a string, so coallesce twice.
+    } else { // This match is followed by a string, so coalesce twice.
       s[o.i] = o.x + s[o.i + 1];
       s.splice(o.i + 1, 1);
     }
@@ -92,6 +92,58 @@ d3.interpolateString = function(a, b) {
   };
 };
 
+d3.interpolateTransform = function(a, b) {
+  var s = [], // string constants and placeholders
+      q = [], // number interpolators
+      n,
+      A = d3.transform(a),
+      B = d3.transform(b),
+      ta = A.translate,
+      tb = B.translate,
+      ra = A.rotate,
+      rb = B.rotate,
+      wa = A.skew,
+      wb = B.skew,
+      ka = A.scale,
+      kb = B.scale;
+
+  if (ta[0] != tb[0] || ta[1] != tb[1]) {
+    s.push("translate(", null, ",", null, ")");
+    q.push({i: 1, x: d3.interpolateNumber(ta[0], tb[0])}, {i: 3, x: d3.interpolateNumber(ta[1], tb[1])});
+  } else if (tb[0] || tb[1]) {
+    s.push("translate(" + tb + ")");
+  } else {
+    s.push("");
+  }
+
+  if (ra != rb) {
+    if (ra - rb > 180) rb += 360; else if (rb - ra > 180) ra += 360; // shortest path
+    q.push({i: s.push(s.pop() + "rotate(", null, ")") - 2, x: d3.interpolateNumber(ra, rb)});
+  } else if (rb) {
+    s.push(s.pop() + "rotate(" + rb + ")");
+  }
+
+  if (wa != wb) {
+    q.push({i: s.push(s.pop() + "skewX(", null, ")") - 2, x: d3.interpolateNumber(wa, wb)});
+  } else if (wb) {
+    s.push(s.pop() + "skewX(" + wb + ")");
+  }
+
+  if (ka[0] != kb[0] || ka[1] != kb[1]) {
+    n = s.push(s.pop() + "scale(", null, ",", null, ")");
+    q.push({i: n - 4, x: d3.interpolateNumber(ka[0], kb[0])}, {i: n - 2, x: d3.interpolateNumber(ka[1], kb[1])});
+  } else if (kb[0] != 1 || kb[1] != 1) {
+    s.push(s.pop() + "scale(" + kb + ")");
+  }
+
+  n = q.length;
+  return function(t) {
+    var i = -1, o;
+    while (++i < n) s[(o = q[i]).i] = o.x(t);
+    return s.join("");
+  };
+};
+
 d3.interpolateRgb = function(a, b) {
   a = d3.rgb(a);
   b = d3.rgb(b);
@@ -102,10 +154,10 @@ d3.interpolateRgb = function(a, b) {
       bg = b.g - ag,
       bb = b.b - ab;
   return function(t) {
-    return "rgb(" + Math.round(ar + br * t)
-        + "," + Math.round(ag + bg * t)
-        + "," + Math.round(ab + bb * t)
-        + ")";
+    return "#"
+        + d3_rgb_hex(Math.round(ar + br * t))
+        + d3_rgb_hex(Math.round(ag + bg * t))
+        + d3_rgb_hex(Math.round(ab + bb * t));
   };
 };
 
@@ -119,8 +171,38 @@ d3.interpolateHsl = function(a, b) {
       h1 = b.h - h0,
       s1 = b.s - s0,
       l1 = b.l - l0;
+  if (h1 > 180) h1 -= 360; else if (h1 < -180) h1 += 360; // shortest path
   return function(t) {
-    return d3_hsl_rgb(h0 + h1 * t, s0 + s1 * t, l0 + l1 * t).toString();
+    return d3_hsl_rgb(h0 + h1 * t, s0 + s1 * t, l0 + l1 * t) + "";
+  };
+};
+
+d3.interpolateLab = function(a, b) {
+  a = d3.lab(a);
+  b = d3.lab(b);
+  var al = a.l,
+      aa = a.a,
+      ab = a.b,
+      bl = b.l - al,
+      ba = b.a - aa,
+      bb = b.b - ab;
+  return function(t) {
+    return d3_lab_rgb(al + bl * t, aa + ba * t, ab + bb * t) + "";
+  };
+};
+
+d3.interpolateHcl = function(a, b) {
+  a = d3.hcl(a);
+  b = d3.hcl(b);
+  var ah = a.h,
+      ac = a.c,
+      al = a.l,
+      bh = b.h - ah,
+      bc = b.c - ac,
+      bl = b.l - al;
+  if (bh > 180) bh -= 360; else if (bh < -180) bh += 360; // shortest path
+  return function(t) {
+    return d3_hcl_lab(ah + bh * t, ac + bc * t, al + bl * t) + "";
   };
 };
 
@@ -160,21 +242,20 @@ d3.interpolateObject = function(a, b) {
     for (k in i) c[k] = i[k](t);
     return c;
   };
-}
+};
 
-var d3_interpolate_number = /[-+]?(?:\d+\.\d+|\d+\.|\.\d+|\d+)(?:[eE][-]?\d+)?/g,
-    d3_interpolate_rgb = {background: 1, fill: 1, stroke: 1};
+var d3_interpolate_number = /[-+]?(?:\d+\.?\d*|\.?\d+)(?:[eE][-+]?\d+)?/g;
 
-function d3_interpolateByName(n) {
-  return n in d3_interpolate_rgb || /\bcolor\b/.test(n)
-      ? d3.interpolateRgb
+function d3_interpolateByName(name) {
+  return name == "transform"
+      ? d3.interpolateTransform
       : d3.interpolate;
 }
 
 d3.interpolators = [
   d3.interpolateObject,
-  function(a, b) { return (b instanceof Array) && d3.interpolateArray(a, b); },
-  function(a, b) { return (typeof b === "string") && d3.interpolateString(String(a), b); },
-  function(a, b) { return (b in d3_rgb_names || /^(#|rgb\(|hsl\()/.test(b)) && d3.interpolateRgb(String(a), b); },
-  function(a, b) { return (typeof b === "number") && d3.interpolateNumber(+a, b); }
+  function(a, b) { return b instanceof Array && d3.interpolateArray(a, b); },
+  function(a, b) { return (typeof a === "string" || typeof b === "string") && d3.interpolateString(a + "", b + ""); },
+  function(a, b) { return (typeof b === "string" ? d3_rgb_names.has(b) || /^(#|rgb\(|hsl\()/.test(b) : b instanceof d3_Color) && d3.interpolateRgb(a, b); },
+  function(a, b) { return !isNaN(a = +a) && !isNaN(b = +b) && d3.interpolateNumber(a, b); }
 ];

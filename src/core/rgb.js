@@ -1,6 +1,7 @@
 d3.rgb = function(r, g, b) {
   return arguments.length === 1
-      ? d3_rgb_parse("" + r, d3_rgb, d3_hsl_rgb)
+      ? (r instanceof d3_Rgb ? d3_rgb(r.r, r.g, r.b)
+      : d3_rgb_parse("" + r, d3_rgb, d3_hsl_rgb))
       : d3_rgb(~~r, ~~g, ~~b);
 };
 
@@ -14,7 +15,9 @@ function d3_Rgb(r, g, b) {
   this.b = b;
 }
 
-d3_Rgb.prototype.brighter = function(k) {
+var d3_rgbPrototype = d3_Rgb.prototype = new d3_Color;
+
+d3_rgbPrototype.brighter = function(k) {
   k = Math.pow(0.7, arguments.length ? k : 1);
   var r = this.r,
       g = this.g,
@@ -25,29 +28,31 @@ d3_Rgb.prototype.brighter = function(k) {
   if (g && g < i) g = i;
   if (b && b < i) b = i;
   return d3_rgb(
-    Math.min(255, Math.floor(r / k)),
-    Math.min(255, Math.floor(g / k)),
-    Math.min(255, Math.floor(b / k)));
+      Math.min(255, Math.floor(r / k)),
+      Math.min(255, Math.floor(g / k)),
+      Math.min(255, Math.floor(b / k)));
 };
 
-d3_Rgb.prototype.darker = function(k) {
+d3_rgbPrototype.darker = function(k) {
   k = Math.pow(0.7, arguments.length ? k : 1);
   return d3_rgb(
-    Math.max(0, Math.floor(k * this.r)),
-    Math.max(0, Math.floor(k * this.g)),
-    Math.max(0, Math.floor(k * this.b)));
+      Math.floor(k * this.r),
+      Math.floor(k * this.g),
+      Math.floor(k * this.b));
 };
 
-d3_Rgb.prototype.hsl = function() {
+d3_rgbPrototype.hsl = function() {
   return d3_rgb_hsl(this.r, this.g, this.b);
 };
 
-d3_Rgb.prototype.toString = function() {
+d3_rgbPrototype.toString = function() {
   return "#" + d3_rgb_hex(this.r) + d3_rgb_hex(this.g) + d3_rgb_hex(this.b);
 };
 
 function d3_rgb_hex(v) {
-  return v < 0x10 ? "0" + v.toString(16) : v.toString(16);
+  return v < 0x10
+      ? "0" + Math.max(0, v).toString(16)
+      : Math.min(255, v).toString(16);
 }
 
 function d3_rgb_parse(format, rgb, hsl) {
@@ -81,7 +86,7 @@ function d3_rgb_parse(format, rgb, hsl) {
   }
 
   /* Named colors. */
-  if (name = d3_rgb_names[format]) return rgb(name.r, name.g, name.b);
+  if (name = d3_rgb_names.get(format)) return rgb(name.r, name.g, name.b);
 
   /* Hexadecimal colors: #rgb and #rrggbb. */
   if (format != null && format.charAt(0) === "#") {
@@ -121,12 +126,26 @@ function d3_rgb_hsl(r, g, b) {
   return d3_hsl(h, s, l);
 }
 
+function d3_rgb_lab(r, g, b) {
+  r = d3_rgb_xyz(r);
+  g = d3_rgb_xyz(g);
+  b = d3_rgb_xyz(b);
+  var x = d3_xyz_lab((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / d3_lab_X),
+      y = d3_xyz_lab((0.2126729 * r + 0.7151522 * g + 0.0721750 * b) / d3_lab_Y),
+      z = d3_xyz_lab((0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / d3_lab_Z);
+  return d3_lab(116 * y - 16, 500 * (x - y), 200 * (y - z));
+}
+
+function d3_rgb_xyz(r) {
+  return (r /= 255) <= 0.04045 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+}
+
 function d3_rgb_parseNumber(c) { // either integer or percentage
   var f = parseFloat(c);
   return c.charAt(c.length - 1) === "%" ? Math.round(f * 2.55) : f;
 }
 
-var d3_rgb_names = {
+var d3_rgb_names = d3.map({
   aliceblue: "#f0f8ff",
   antiquewhite: "#faebd7",
   aqua: "#00ffff",
@@ -274,11 +293,8 @@ var d3_rgb_names = {
   whitesmoke: "#f5f5f5",
   yellow: "#ffff00",
   yellowgreen: "#9acd32"
-};
+});
 
-for (var d3_rgb_name in d3_rgb_names) {
-  d3_rgb_names[d3_rgb_name] = d3_rgb_parse(
-      d3_rgb_names[d3_rgb_name],
-      d3_rgb,
-      d3_hsl_rgb);
-}
+d3_rgb_names.forEach(function(key, value) {
+  d3_rgb_names.set(key, d3_rgb_parse(value, d3_rgb, d3_hsl_rgb));
+});

@@ -1,6 +1,7 @@
 d3.hsl = function(h, s, l) {
   return arguments.length === 1
-      ? d3_rgb_parse("" + h, d3_rgb_hsl, d3_hsl)
+      ? (h instanceof d3_Hsl ? d3_hsl(h.h, h.s, h.l)
+      : d3_rgb_parse("" + h, d3_rgb_hsl, d3_hsl))
       : d3_hsl(+h, +s, +l);
 };
 
@@ -14,22 +15,20 @@ function d3_Hsl(h, s, l) {
   this.l = l;
 }
 
-d3_Hsl.prototype.brighter = function(k) {
+var d3_hslPrototype = d3_Hsl.prototype = new d3_Color;
+
+d3_hslPrototype.brighter = function(k) {
   k = Math.pow(0.7, arguments.length ? k : 1);
   return d3_hsl(this.h, this.s, this.l / k);
 };
 
-d3_Hsl.prototype.darker = function(k) {
+d3_hslPrototype.darker = function(k) {
   k = Math.pow(0.7, arguments.length ? k : 1);
   return d3_hsl(this.h, this.s, k * this.l);
 };
 
-d3_Hsl.prototype.rgb = function() {
+d3_hslPrototype.rgb = function() {
   return d3_hsl_rgb(this.h, this.s, this.l);
-};
-
-d3_Hsl.prototype.toString = function() {
-  return "hsl(" + this.h + "," + this.s * 100 + "%," + this.l * 100 + "%)";
 };
 
 function d3_hsl_rgb(h, s, l) {

@@ -1,7 +1,12 @@
-d3.time.month = function(date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-};
+d3.time.month = d3_time_interval(function(date) {
+  date = d3.time.day(date);
+  date.setDate(1);
+  return date;
+}, function(date, offset) {
+  date.setMonth(date.getMonth() + offset);
+}, function(date) {
+  return date.getMonth();
+});
 
-d3.time.month.utc = function(date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-};
+d3.time.months = d3.time.month.range;
+d3.time.months.utc = d3.time.month.utc.range;

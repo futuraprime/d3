@@ -9,8 +9,8 @@ d3.svg.arc = function() {
         r1 = outerRadius.apply(this, arguments),
         a0 = startAngle.apply(this, arguments) + d3_svg_arcOffset,
         a1 = endAngle.apply(this, arguments) + d3_svg_arcOffset,
-        da = a1 - a0,
-        df = da < Math.PI ? "0" : "1",
+        da = (a1 < a0 && (da = a0, a0 = a1, a1 = da), a1 - a0),
+        df = da < π ? "0" : "1",
         c0 = Math.cos(a0),
         s0 = Math.sin(a0),
         c1 = Math.cos(a1),
@@ -21,8 +21,8 @@ d3.svg.arc = function() {
       + "A" + r1 + "," + r1 + " 0 1,1 0," + (-r1)
       + "A" + r1 + "," + r1 + " 0 1,1 0," + r1
       + "M0," + r0
-      + "A" + r0 + "," + r0 + " 0 1,1 0," + (-r0)
-      + "A" + r0 + "," + r0 + " 0 1,1 0," + r0
+      + "A" + r0 + "," + r0 + " 0 1,0 0," + (-r0)
+      + "A" + r0 + "," + r0 + " 0 1,0 0," + r0
       + "Z"
       : "M0," + r1
       + "A" + r1 + "," + r1 + " 0 1,1 0," + (-r1)
@@ -42,25 +42,25 @@ d3.svg.arc = function() {
 
   arc.innerRadius = function(v) {
     if (!arguments.length) return innerRadius;
-    innerRadius = d3.functor(v);
+    innerRadius = d3_functor(v);
     return arc;
   };
 
   arc.outerRadius = function(v) {
     if (!arguments.length) return outerRadius;
-    outerRadius = d3.functor(v);
+    outerRadius = d3_functor(v);
     return arc;
   };
 
   arc.startAngle = function(v) {
     if (!arguments.length) return startAngle;
-    startAngle = d3.functor(v);
+    startAngle = d3_functor(v);
     return arc;
   };
 
   arc.endAngle = function(v) {
     if (!arguments.length) return endAngle;
-    endAngle = d3.functor(v);
+    endAngle = d3_functor(v);
     return arc;
   };
 
@@ -75,8 +75,8 @@ d3.svg.arc = function() {
   return arc;
 };
 
-var d3_svg_arcOffset = -Math.PI / 2,
-    d3_svg_arcMax = 2 * Math.PI - 1e-6;
+var d3_svg_arcOffset = -π / 2,
+    d3_svg_arcMax = 2 * π - 1e-6;
 
 function d3_svg_arcInnerRadius(d) {
   return d.innerRadius;

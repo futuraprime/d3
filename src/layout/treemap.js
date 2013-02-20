@@ -8,6 +8,7 @@ d3.layout.treemap = function() {
       pad = d3_layout_treemapPadNull,
       sticky = false,
       stickies,
+      mode = "squarify",
       ratio = 0.5 * (1 + Math.sqrt(5)); // golden ratio
 
   // Compute the area for each child based on value & scale.
@@ -24,57 +25,64 @@ d3.layout.treemap = function() {
 
   // Recursively arranges the specified node's children into squarified rows.
   function squarify(node) {
-    if (!node.children) return;
-    var rect = pad(node),
-        row = [],
-        children = node.children.slice(), // copy-on-write
-        child,
-        best = Infinity, // the best row score so far
-        score, // the current row score
-        u = Math.min(rect.dx, rect.dy), // initial orientation
-        n;
-    scale(children, rect.dx * rect.dy / node.value);
-    row.area = 0;
-    while ((n = children.length) > 0) {
-      row.push(child = children[n - 1]);
-      row.area += child.area;
-      if ((score = worst(row, u)) <= best) { // continue with this orientation
-        children.pop();
-        best = score;
-      } else { // abort, and try a different orientation
-        row.area -= row.pop().area;
-        position(row, u, rect, false);
-        u = Math.min(rect.dx, rect.dy);
-        row.length = row.area = 0;
-        best = Infinity;
+    var children = node.children;
+    if (children && children.length) {
+      var rect = pad(node),
+          row = [],
+          remaining = children.slice(), // copy-on-write
+          child,
+          best = Infinity, // the best row score so far
+          score, // the current row score
+          u = mode === "slice" ? rect.dx
+            : mode === "dice" ? rect.dy
+            : mode === "slice-dice" ? node.depth & 1 ? rect.dy : rect.dx
+            : Math.min(rect.dx, rect.dy), // initial orientation
+          n;
+      scale(remaining, rect.dx * rect.dy / node.value);
+      row.area = 0;
+      while ((n = remaining.length) > 0) {
+        row.push(child = remaining[n - 1]);
+        row.area += child.area;
+        if (mode !== "squarify" || (score = worst(row, u)) <= best) { // continue with this orientation
+          remaining.pop();
+          best = score;
+        } else { // abort, and try a different orientation
+          row.area -= row.pop().area;
+          position(row, u, rect, false);
+          u = Math.min(rect.dx, rect.dy);
+          row.length = row.area = 0;
+          best = Infinity;
+        }
       }
+      if (row.length) {
+        position(row, u, rect, true);
+        row.length = row.area = 0;
+      }
+      children.forEach(squarify);
     }
-    if (row.length) {
-      position(row, u, rect, true);
-      row.length = row.area = 0;
-    }
-    node.children.forEach(squarify);
   }
 
   // Recursively resizes the specified node's children into existing rows.
   // Preserves the existing layout!
   function stickify(node) {
-    if (!node.children) return;
-    var rect = pad(node),
-        children = node.children.slice(), // copy-on-write
-        child,
-        row = [];
-    scale(children, rect.dx * rect.dy / node.value);
-    row.area = 0;
-    while (child = children.pop()) {
-      row.push(child);
-      row.area += child.area;
-      if (child.z != null) {
-        position(row, child.z ? rect.dx : rect.dy, rect, !children.length);
-        row.length = row.area = 0;
+    var children = node.children;
+    if (children && children.length) {
+      var rect = pad(node),
+          remaining = children.slice(), // copy-on-write
+          child,
+          row = [];
+      scale(remaining, rect.dx * rect.dy / node.value);
+      row.area = 0;
+      while (child = remaining.pop()) {
+        row.push(child);
+        row.area += child.area;
+        if (child.z != null) {
+          position(row, child.z ? rect.dx : rect.dy, rect, !remaining.length);
+          row.length = row.area = 0;
+        }
       }
+      children.forEach(stickify);
     }
-    node.children.forEach(stickify);
   }
 
   // Computes the score for the specified row, as the worst aspect ratio.
@@ -86,13 +94,13 @@ d3.layout.treemap = function() {
         i = -1,
         n = row.length;
     while (++i < n) {
-      r = row[i].area;
+      if (!(r = row[i].area)) continue;
       if (r < rmin) rmin = r;
       if (r > rmax) rmax = r;
     }
     s *= s;
     u *= u;
-    return rmin || rmax
+    return s
         ? Math.max((u * rmax * ratio) / s, s / (u * rmin * ratio))
         : Infinity;
   }
@@ -112,7 +120,7 @@ d3.layout.treemap = function() {
         o.x = x;
         o.y = y;
         o.dy = v;
-        x += o.dx = v ? round(o.area / v) : 0;
+        x += o.dx = Math.min(rect.x + rect.dx - x, v ? round(o.area / v) : 0);
       }
       o.z = true;
       o.dx += rect.x + rect.dx - x; // rounding error
@@ -125,7 +133,7 @@ d3.layout.treemap = function() {
         o.x = x;
         o.y = y;
         o.dx = v;
-        y += o.dy = v ? round(o.area / v) : 0;
+        y += o.dy = Math.min(rect.y + rect.dy - y, v ? round(o.area / v) : 0);
       }
       o.z = false;
       o.dy += rect.y + rect.dy - y; // rounding error
@@ -192,6 +200,12 @@ d3.layout.treemap = function() {
   treemap.ratio = function(x) {
     if (!arguments.length) return ratio;
     ratio = x;
+    return treemap;
+  };
+
+  treemap.mode = function(x) {
+    if (!arguments.length) return mode;
+    mode = x + "";
     return treemap;
   };
 
