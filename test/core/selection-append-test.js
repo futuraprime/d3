@@ -24,6 +24,11 @@ suite.addBatch({
       assert.isTrue(svg[0][0].parentNode === document.body);
       assert.isTrue(svg[0][0] === document.body.lastChild);
     },
+    "appends an element directly": function(body) {
+      var div = document.createElement('div');
+      var appendedDiv = body.append(div);
+      assert.domEqual(appendedDiv[0][0], div);
+    },
     "propagates data to new element": function(body) {
       var data = new Object(), div = body.data([data]).append("div");
       assert.strictEqual(div[0][0].__data__, data);
@@ -66,6 +71,11 @@ suite.addBatch({
       assert.isTrue(svg[0][1].parentNode === div[0][1]);
       assert.isTrue(div[0][0].lastChild === svg[0][0]);
       assert.isTrue(div[0][1].lastChild === svg[0][1]);
+    },
+    "appends an element directly": function(div) {
+      var span = document.createElement('span');
+      var appendedSpan = div.append(span);
+      assert.domEqual(appendedSpan[0][0], span);
     },
     "ignores null nodes": function(div) {
       div.html("");
