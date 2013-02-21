@@ -1,6 +1,12 @@
 // TODO append(node)?
 // TODO append(function)?
 d3_selectionPrototype.append = function(name) {
+  if (!!(name && name.nodeType === 1)) {
+    return this.select(function() {
+      return this.appendChild(name);
+    });
+  }
+
   name = d3.ns.qualify(name);
 
   function append() {
