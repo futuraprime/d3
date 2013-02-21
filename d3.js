@@ -1648,6 +1648,11 @@ d3 = function() {
     }) : this.node().innerHTML;
   };
   d3_selectionPrototype.append = function(name) {
+    if (!!(name && name.nodeType === 1)) {
+      return this.select(function() {
+        return this.appendChild(name);
+      });
+    }
     name = d3.ns.qualify(name);
     function append() {
       return this.appendChild(d3_document.createElementNS(this.namespaceURI, name));

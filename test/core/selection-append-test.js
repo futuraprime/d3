@@ -67,6 +67,11 @@ suite.addBatch({
       assert.isTrue(div[0][0].lastChild === svg[0][0]);
       assert.isTrue(div[0][1].lastChild === svg[0][1]);
     },
+    "appends an element directly": function(div) {
+      var span = document.createElement('span');
+      var appendedSpan = div.append(span);
+      assert.equal(appendedSpan[0][0], span);
+    },
     "ignores null nodes": function(div) {
       div.html("");
       var some = d3.selectAll("div");
